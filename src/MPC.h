@@ -11,10 +11,34 @@ class MPC {
   MPC();
 
   virtual ~MPC();
+  
+  void GetVehicleCoords( double px, 
+                         double py, 
+                         double psi, 
+                         vector<double> &xvec, 
+                         vector<double> &yvec ); 
 
-  // Solve the model given an initial state and polynomial coefficients.
-  // Return the first actuatotions.
-  vector<double> Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
+  void Polyfit( Eigen::VectorXd xvec, 
+                Eigen::VectorXd yvec, 
+                int order, 
+                Eigen::VectorXd& result ); 
+
+  double Polyeval( Eigen::VectorXd coeffs, double x );
+
+  vector<double> Solve( Eigen::VectorXd state, 
+                        Eigen::VectorXd coeffs );
+
+  void GetMpcOutputs( const double px, 
+                      const double py, 
+                      const double psi, 
+                      const double v, 
+                      vector<double>& ptsx, 
+                      vector<double>& ptsy,
+                      double& steer_value, 
+                      double& throttle_value ) ;
+
+  vector<double> x_data;
+  vector<double> y_data;
 };
 
 #endif /* MPC_H */
