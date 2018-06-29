@@ -34,6 +34,7 @@ string hasData(string s) {
 
 int main() {
   uWS::Hub h;
+
   // MPC is initialized here!
   MPC mpc;
 
@@ -63,30 +64,42 @@ int main() {
 
           double steer_value;
           double throttle_value;
+  
+          //////////////////////////////////////////////////////////////////////
+          //
+          // GetMpcOutputs(): 
+          //  An MPC class function wrapper for the following sub-functions 
+          //
+          //  1. Convert Map coordinates to vehicle coordinates
+          //  2. Run polyfit to get coefficients on the vehicle data
+          //  3. Run polyeval on the coefficents to determine the cte 
+          //  4. Run solve to get predicted steering and throttle values 
+          //
+          //////////////////////////////////////////////////////////////////////
+          
           mpc.GetMpcOutputs( px, py, psi, v, ptsx, ptsy, steer_value, throttle_value );
-
           json msgJson;
           msgJson["steering_angle"] = -steer_value;
           msgJson["throttle"] = throttle_value;
 
           // Display MPC predicted trajectory 
-          vector<double> mpc_x_data = mpc.x_data;
-          vector<double> mpc_y_data = mpc.y_data;
+          vector<double> mpc_x_vals = mpc.x_vals;
+          vector<double> mpc_y_vals = mpc.y_vals;
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
-          msgJson["mpc_x"] = mpc_x_data;
-          msgJson["mpc_y"] = mpc_y_data;
+          msgJson["mpc_x"] = mpc_x_vals;
+          msgJson["mpc_y"] = mpc_y_vals;
 
           //Display the waypoints/reference line
-          vector<double> next_x_data = ptsx;
-          vector<double> next_y_data = ptsy;
+          vector<double> next_x_vals = ptsx;
+          vector<double> next_y_vals = ptsy;
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
 
-          msgJson["next_x"] = next_x_data;
-          msgJson["next_y"] = next_y_data;
+          msgJson["next_x"] = next_x_vals;
+          msgJson["next_y"] = next_y_vals;
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;

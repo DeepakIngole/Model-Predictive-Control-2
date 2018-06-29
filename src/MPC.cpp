@@ -26,9 +26,8 @@ double ref_cte = 0;
 double ref_epsi = 0;
 double ref_v = 60;
 
-// The solver takes all the state variables and actuator
-// variables in a singular vector. Thus, we should to establish
-// when one variable starts and another ends to make our lifes easier.
+// All the state and actuator variable are in one big vector
+// We need to define start index in the vector for each segment.
 size_t x_start = 0;
 size_t y_start = x_start + N;
 size_t psi_start = y_start + N;
@@ -125,17 +124,17 @@ MPC::~MPC() {}
 //=============================================================================
 //  @brief: MPC::GetVehicleCoords()
 //
-//  @param px:
-//  @param py:
-//  @param psi:
-//  @param xvec:
-//  @param yvec:
+//  @param  px:     double x coord value
+//  @param  py:     double y coord value
+//  @param  psi:    double psi coord value
+//  @param  xvec:   reference to xvec vector
+//  @param  yvec:   reference to yvec vector
 //
 //  @return void
 //=============================================================================
-void MPC::GetVehicleCoords( double px, 
-                            double py, 
-                            double psi, 
+void MPC::GetVehicleCoords( const double px, 
+                            const double py, 
+                            const double psi, 
                             vector<double> &xvec, 
                             vector<double> &yvec ) 
 {
@@ -152,18 +151,20 @@ void MPC::GetVehicleCoords( double px,
 }
 
 //=============================================================================
-//  @brief: Polyfit()
-//          Fit a polynomial. Adapted from
-//          https://github.com/JuliaMath/Polynomials.jl/blob/master/src/Polynomials.jl#L676-L716
+//  @brief  Polyfit()
+//          Fit a polynomial given x and y vectors.
 //
-//  @param xvals:      y vector 
-//  @param yvals:      y vector 
+//  @param  xvals:  x vector 
+//  @param  xvec:   Eigen vector for x vector 
+//  @param  yvec:   Eigen vector for y vector 
+//  @param  order:  order of polynomial  
+//  @param  result: Reference to Eigen vector for fitted result 
 //
 //  @return void
 //=============================================================================
-void MPC::Polyfit( Eigen::VectorXd xvec, 
-                   Eigen::VectorXd yvec, 
-                   int order, 
+void MPC::Polyfit( const Eigen::VectorXd xvec, 
+                   const Eigen::VectorXd yvec, 
+                   const int order, 
                    Eigen::VectorXd& result ) 
 {
   assert(xvec.size() == yvec.size());
@@ -187,14 +188,17 @@ void MPC::Polyfit( Eigen::VectorXd xvec,
 }
 
 //=============================================================================
-//  @brief: Polyeval()
+//  @brief  Polyeval()
 //          Evaluate a polynomial.
 //
-//  @param coeffs: polyfit coefficients
+//  @param  coeffs: polyfit coefficients vector
+//  @param  x:      base value used for std::pow(base, exp)
 //
-//  @return result 
+//  @return result: evaluated result (cte) 
 //=============================================================================
-double MPC::Polyeval( Eigen::VectorXd coeffs, double x ) {
+double MPC::Polyeval( const Eigen::VectorXd coeffs, 
+                      double x ) 
+{
 
   double result = 0.0;
   
@@ -206,15 +210,18 @@ double MPC::Polyeval( Eigen::VectorXd coeffs, double x ) {
 }
 
 //=============================================================================
-//  @brief: MPC::Solve()
+//  @brief  MPC::Solve()
 //          Solve the model given an initial state and polynomial coefficients.
-//          Return the first actuatotions.
+//          Return the first actuations.
 //
-//  @param
+//  @param  state:  Eigen vector for state
+//  @param  coeffs: Eigen vector for coefficents
 //
-//  @return result 
+//  @return result: vector to hold solve result
 //=============================================================================
-vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
+vector<double> MPC::Solve( const Eigen::VectorXd state, 
+                           const Eigen::VectorXd coeffs ) 
+{
 
   bool ok = true;
   size_t i;
@@ -242,7 +249,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
     vars[i] = 0;
   }
 
-  // Set the initial variable values
+  // Set the initial sub-vector values 
   vars[x_start] = x;
   vars[y_start] = y;
   vars[psi_start] = psi;
@@ -263,14 +270,12 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
 
   // The upper and lower limits of delta are set to -25 and 25
   // degrees (values in radians).
-  // NOTE: Feel free to change this to something else.
   for( i = delta_start; i < a_start; i++ ) {
     vars_lowerbound[i] = -0.3;
     vars_upperbound[i] = 0.3;
   }
 
-  // Acceleration/decceleration upper and lower limits.
-  // NOTE: Feel free to change this to something else.
+  // Acceleration upper and lower bounds.
   for( i = a_start; i < n_vars; i++ ) {
     vars_lowerbound[i] = -1.0;
     vars_upperbound[i] = 1.0;
@@ -315,7 +320,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   options += "Sparse  true        reverse\n";
   // NOTE: Currently the solver has a maximum time limit of 0.5 seconds.
   // Change this as you see fit.
-  options += "Numeric max_cpu_time          0.05\n";
+  options += "Numeric max_cpu_time          0.1\n";
 
   // place to return solution
   CppAD::ipopt::solve_result<Dvector> solution;
@@ -332,11 +337,14 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   auto cost = solution.obj_value;
   std::cout << "Cost " << cost << std::endl;
 
-  x_data.clear();
-  y_data.clear();
+  // Return the first actuator values. 
+  // The variables can be accessed with `solution.x[i]`.
+
+  x_vals.clear();
+  y_vals.clear();
   for( i = 0; i < N; i++ ) {
-    x_data.push_back( solution.x[x_start + i] );
-    y_data.push_back( solution.x[y_start + i] );
+    x_vals.push_back( solution.x[x_start + i] );
+    y_vals.push_back( solution.x[y_start + i] );
   }
 
   return {solution.x[x_start + 1],   
@@ -347,19 +355,24 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
           solution.x[epsi_start + 1],
           solution.x[delta_start]+ solution.x[delta_start+1],   
           solution.x[a_start]+ solution.x[a_start+1] };
+
 }
 
 //=============================================================================
 //  @brief: GetMpcOuputs()
-//          Convert map coords to vehicle coords
+//          An MPC class function wrapper for the following sub-functions:
+//          1. Convert Map coordinates to vehicle coordinates
+//          2. Run polyfit to fit a polynomial given x and y vectors.
+//          3. Run polyeval to evaluate the polynomial and compute the cte 
+//          4. Run solve to get predicted steering and throttle values 
 //
-//  @param px:            x vector 
-//  @param py:            y vector 
-//  @param psi:           psi vector 
-//  @param ptsx:          ptsx vector 
-//  @param ptsy:          ptsy vector 
-//  @param steer_value:   reference to steering value 
-//  @param thottle_value: reference to thottle value 
+//  @param  px:            const double x 
+//  @param  py:            const double y 
+//  @param  psi:           const double psi 
+//  @param  ptsx:          reference to ptsx vector 
+//  @param  ptsy:          reference to ptsy vector 
+//  @param  steer_value:   reference to steering value 
+//  @param  thottle_value: reference to thottle value 
 //
 //  @return void
 //=============================================================================

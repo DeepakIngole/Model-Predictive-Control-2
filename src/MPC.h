@@ -12,18 +12,19 @@ class MPC {
 
   virtual ~MPC();
   
-  void GetVehicleCoords( double px, 
-                         double py, 
-                         double psi, 
+  void GetVehicleCoords( const double px, 
+                         const double py, 
+                         const double psi, 
                          vector<double> &xvec, 
                          vector<double> &yvec ); 
 
-  void Polyfit( Eigen::VectorXd xvec, 
-                Eigen::VectorXd yvec, 
-                int order, 
+  void Polyfit( const Eigen::VectorXd xvec, 
+                const Eigen::VectorXd yvec, 
+                const int order, 
                 Eigen::VectorXd& result ); 
 
-  double Polyeval( Eigen::VectorXd coeffs, double x );
+  double Polyeval( const Eigen::VectorXd coeffs, 
+                   double x );
 
   vector<double> Solve( Eigen::VectorXd state, 
                         Eigen::VectorXd coeffs );
@@ -37,8 +38,8 @@ class MPC {
                       double& steer_value, 
                       double& throttle_value ) ;
 
-  vector<double> x_data;
-  vector<double> y_data;
+  vector<double> x_vals;
+  vector<double> y_vals;
 };
 
 #endif /* MPC_H */
