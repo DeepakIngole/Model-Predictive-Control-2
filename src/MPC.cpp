@@ -24,7 +24,8 @@ const double Lf = 2.67;
 
 double ref_cte = 0;
 double ref_epsi = 0;
-double ref_v = 60;
+double ref_v = 60; // 60 MPH
+
 
 // All the state and actuator variable are in one big vector
 // We need to define start index in the vector for each segment.
@@ -120,6 +121,27 @@ class FG_eval {
 //
 MPC::MPC() {}
 MPC::~MPC() {}
+
+// For converting back and forth between radians and degrees.
+constexpr double pi() { return M_PI; }
+
+//=============================================================================
+//  @brief: MPC::deg2rad()
+//
+//  @param  x:  double x (angle in degrees)
+//
+//  @return angle in radians 
+//=============================================================================
+double MPC::deg2rad( const double x ) { return x * pi() / 180; }
+
+//=============================================================================
+//  @brief: MPC::rad2deg()
+//
+//  @param  x:  double x (angle in radians)
+//
+//  @return angle in degrees 
+//=============================================================================
+double MPC::rad2deg( const double x ) { return x * 180 / pi(); }
 
 //=============================================================================
 //  @brief: MPC::GetVehicleCoords()
@@ -270,9 +292,11 @@ vector<double> MPC::Solve( const Eigen::VectorXd state,
 
   // The upper and lower limits of delta are set to -25 and 25
   // degrees (values in radians).
+
+  double angle_radians = deg2rad( 25 );
   for( i = delta_start; i < a_start; i++ ) {
-    vars_lowerbound[i] = -0.3;
-    vars_upperbound[i] = 0.3;
+    vars_lowerbound[i] = -angle_radians;
+    vars_upperbound[i] = angle_radians;
   }
 
   // Acceleration upper and lower bounds.

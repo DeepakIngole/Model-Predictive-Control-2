@@ -12,6 +12,10 @@ class MPC {
 
   virtual ~MPC();
   
+  double deg2rad( const double x );
+
+  double rad2deg( const double x );
+
   void GetVehicleCoords( const double px, 
                          const double py, 
                          const double psi, 
