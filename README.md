@@ -22,10 +22,15 @@ The control vector is used for navigating the vehicle around the track. The cont
 The MPC update equations are as follows:
 
 ![](https://latex.codecogs.com/gif.latex?x_%7Bt&plus;1%7D%20%3D%20xt%20&plus;%20vt.cos%28%5Cpsi%20t%29.dt)
+
 ![](https://latex.codecogs.com/gif.latex?y_%7Bt&plus;1%7D%20%3D%20yt%20&plus;%20vt.sin%28%5Cpsi%20t%29.dt)
+
 ![](https://latex.codecogs.com/gif.latex?%5Cpsi_%7Bt&plus;1%7D%20%3D%20%5Cpsi%20t%20&plus;%20%5Cfrac%7Bvt%7D%7BLf%7D.%5Cdelta%20t%20.dt)
+
 ![](https://latex.codecogs.com/gif.latex?v_%7Bt&plus;1%7D%20%3D%20v%20t%20&plus;%20at%20.dt)
+
 ![](https://latex.codecogs.com/gif.latex?cte_%7Bt&plus;1%7D%20%3D%20f%28xt%29%20-%20yt%20&plus;%20%28vt.sin%28e%20%5Cpsi%20t%29%20.dt)
+
 ![](https://latex.codecogs.com/gif.latex?e%5Cpsi_%7Bt&plus;1%7D%20%3D%20%5Cpsi%20t%20-%20%5Cpsi%20des_%7Bt%7D%20&plus;%20%28%5Cfrac%7Bvt%7D%7BLf%7D%5Cdelta%20t.dt%29)
 
 ### 2.2 Timestep Length and Elapsed Duration 
