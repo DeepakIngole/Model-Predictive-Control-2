@@ -39,7 +39,7 @@ For self driving cars, the prediction horizon changes all the time and a new set
   * T should be as large as possible.
   * dt should be as small as possible. 
  
-In this project; the final hyperparameters are N = 10, and dt = 0.1. With these hyperparameter the MPC predicts a new horizon T = (10 * 0.1) every 1 second. I did experiment with higher values for N and dt (15, 0.06) and (20,0.05) but this made the controller unstable. The suggested max_cpu_time for the ipopt solver was 0.5 but I set it 0.1 decrease the CPU effort. To help constrain the MPC, I limited the steering angle to +/- 25 degrees (0.436332 radians), and I contrained the max speed to 60 MPH. I did try higher speeds of 65MPH but the car brushed the edges a little too closely in some cases so set the upper limit to 60MPH.
+In this project; the final hyperparameters are N = 10, and dt = 0.1. With these hyperparameter the MPC predicts a new horizon T = (10 * 0.1) every 1 second. I did experiment with higher values for N and dt (15, 0.06) and (20,0.05) but this made the controller unstable. The suggested max_cpu_time for the ipopt solver was 0.5 but I set it 0.1 decrease the CPU effort. To help constrain the MPC, I limited the steering angle to +/- 25 degrees (0.436332 radians), and I contrained the max speed to 70 MPH.
 
 
 ### 2.3 Model Predictive Control with Latency
