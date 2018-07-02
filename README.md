@@ -43,7 +43,7 @@ In this project; the final hyperparameters are N = 10, and dt = 0.1. With these 
 
 
 ### 2.3 Model Predictive Control with Latency
-In a real self-driving car the reading of an actuator output is not instaneous. There will always be a certain reading latency in the sensor itself and the packet transfer latency from the sensor to the ADAS compute module. To model the latency the main thread sleeps for 100ms before sending the updates to the simulator. 
+In a real self-driving car the reading of an actuator output is not instaneous. There will always be a certain reading latency in the sensor itself and the packet transfer latency from the sensor to the ADAS compute module. A 100mS latency was added to the kinematic equations between Polyfit and Solve function calls in MPC.cpp lines 387 to 393.  
 
 ---
 	
