@@ -20,12 +20,10 @@ double dt = 0.1;
 // presented in the classroom matched the previous radius.
 //
 // This is the length from front to CoG that has a similar radius.
-const double Lf = 2.67;
 
 double ref_cte = 0;
 double ref_epsi = 0;
-double ref_v = 60; // 60 MPH
-
+double ref_v = 70;
 
 // All the state and actuator variable are in one big vector
 // We need to define start index in the vector for each segment.
@@ -37,6 +35,7 @@ size_t cte_start = v_start + N;
 size_t epsi_start = cte_start + N;
 size_t delta_start = epsi_start + N;
 size_t a_start = delta_start + N - 1;
+
 size_t i;
 
 class FG_eval {
@@ -46,31 +45,31 @@ class FG_eval {
   FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs; }
 
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
+
   void operator()(ADvector& fg, const ADvector& vars) {
-    // Implement MPC
-    std::cout << "in operator" << std::endl;
     fg[0] = 0;
 
     // The part of the cost based on the reference state.
     for( i = 0; i < N; i++ ) {
-      fg[0] += CppAD::pow(vars[cte_start + i] - ref_cte, 2);
-      fg[0] += CppAD::pow(vars[epsi_start + i] - ref_epsi, 2);
+      fg[0] += 10*CppAD::pow(vars[cte_start + i] - ref_cte, 2);
+      fg[0] += 10*CppAD::pow(vars[epsi_start + i] - ref_epsi, 2);
       fg[0] += CppAD::pow(vars[v_start + i] - ref_v, 2);
     }
 
     // Minimize the use of actuators.
-    for( i = 0; i < N - 1; i++ ) {
-      fg[0] += 500*CppAD::pow(vars[delta_start + i], 2);
-      fg[0] += CppAD::pow(vars[a_start + i], 2);
+    for( i = 0; i< N - 1; i++ ) {
+      fg[0] += 1000*CppAD::pow(vars[delta_start + i], 2);
+      fg[0] += 10*CppAD::pow(vars[a_start + i], 2);
     }
 
     // Minimize the value gap between sequential actuations.
     for( i = 0; i < N - 2; i++ ) {
-      fg[0] += 500*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
-      fg[0] += CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
+      fg[0] += 10000*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      //fg[0] += max_int*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+      fg[0] += 1*CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
     }
 
-    // Initial constraints
+    // Initial constraints.
     fg[1 + x_start] = vars[x_start];
     fg[1 + y_start] = vars[y_start];
     fg[1 + psi_start] = vars[psi_start];
@@ -78,40 +77,37 @@ class FG_eval {
     fg[1 + cte_start] = vars[cte_start];
     fg[1 + epsi_start] = vars[epsi_start];
 
-    // The rest of the constraints
-    for( i = 0; i < N - 1; i++ ) {
+    // The rest of the constraints 
+    for( i = 1; i < N; i++ ) {
       // The state at time t+1 .
-      AD<double> x1 = vars[x_start + i + 1];
-      AD<double> y1 = vars[y_start + i + 1];
-      AD<double> psi1 = vars[psi_start + i + 1];
-      AD<double> v1 = vars[v_start + i + 1];
-      AD<double> cte1 = vars[cte_start + i + 1];
-      AD<double> epsi1 = vars[epsi_start + i + 1];
+      AD<double> x1 = vars[x_start + i];
+      AD<double> y1 = vars[y_start + i];
+      AD<double> psi1 = vars[psi_start + i];
+      AD<double> v1 = vars[v_start + i];
+      AD<double> cte1 = vars[cte_start + i];
+      AD<double> epsi1 = vars[epsi_start + i];
 
       // The state at time t.
-      AD<double> x0 = vars[x_start + i];
-      AD<double> y0 = vars[y_start + i];
-      AD<double> psi0 = vars[psi_start + i];
-      AD<double> v0 = vars[v_start + i];
-      AD<double> cte0 = vars[cte_start + i];
-      AD<double> epsi0 = vars[epsi_start + i];
+      AD<double> x0 = vars[x_start + i - 1];
+      AD<double> y0 = vars[y_start + i - 1];
+      AD<double> psi0 = vars[psi_start + i - 1];
+      AD<double> v0 = vars[v_start + i - 1];
+      AD<double> cte0 = vars[cte_start + i - 1];
+      AD<double> epsi0 = vars[epsi_start + i - 1];
 
       // Only consider the actuation at time t.
-      AD<double> delta0 = vars[delta_start + i];
-      AD<double> a0 = vars[a_start + i];
+      AD<double> delta0 = vars[delta_start + i - 1];
+      AD<double> a0 = vars[a_start + i - 1];
 
-      // 3rd order derivative
-      AD<double> f0 = coeffs[0] + coeffs[1]  * x0 + coeffs[2] * pow(x0,2) + coeffs[3] * pow(x0,3);
-      AD<double> psides0 = CppAD::atan(coeffs[1] + 2 * coeffs[2] * x0 + 3 *coeffs[3]* pow(x0, 2));
+      AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * CppAD::pow(x0, 2) + coeffs[3] * CppAD::pow(x0, 3);
+      AD<double> psides0 = CppAD::atan(coeffs[1] + 2 * coeffs[2] * x0 + 3 * coeffs[3] * CppAD::pow(x0, 2));
 
-      fg[2 + x_start + i] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
-      fg[2 + y_start + i] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
-      fg[2 + psi_start + i] = psi1 - (psi0 + v0 * delta0 / Lf * dt);
-      fg[2 + v_start + i] = v1 - (v0 + a0 * dt);
-      fg[2 + cte_start + i] =
-          cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
-      fg[2 + epsi_start + i] =
-          epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
+      fg[1 + x_start + i] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
+      fg[1 + y_start + i] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
+      fg[1 + psi_start + i] = psi1 - (psi0 - v0 / MPC_LF * delta0 * dt);
+      fg[1 + v_start + i] = v1 - (v0 + a0 * dt);
+      fg[1 + cte_start + i] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
+      fg[1 + epsi_start + i] = epsi1 - ((psi0 - psides0) - v0 / MPC_LF * delta0 * dt);
     }
   }
 };
@@ -121,9 +117,6 @@ class FG_eval {
 //
 MPC::MPC() {}
 MPC::~MPC() {}
-
-// For converting back and forth between radians and degrees.
-constexpr double pi() { return M_PI; }
 
 //=============================================================================
 //  @brief: MPC::deg2rad()
@@ -144,69 +137,40 @@ double MPC::deg2rad( const double x ) { return x * pi() / 180; }
 double MPC::rad2deg( const double x ) { return x * 180 / pi(); }
 
 //=============================================================================
-//  @brief: MPC::GetVehicleCoords()
-//
-//  @param  px:     double x coord value
-//  @param  py:     double y coord value
-//  @param  psi:    double psi coord value
-//  @param  xvec:   reference to xvec vector
-//  @param  yvec:   reference to yvec vector
-//
-//  @return void
-//=============================================================================
-void MPC::GetVehicleCoords( const double px, 
-                            const double py, 
-                            const double psi, 
-                            vector<double> &xvec, 
-                            vector<double> &yvec ) 
-{
-  vector<double> x;
-  vector<double> y;
-  size_t i;
-
-  for( i = 0; i < xvec.size(); i++ ) {
-    x.push_back( (xvec[i] - px) * cos(psi) + (yvec[i] - py) * sin(psi) );
-    y.push_back(-(xvec[i] - px) * sin(psi) + (yvec[i] - py) * cos(psi) );
-  }
-  xvec= x;
-  yvec = y;
-}
-
-//=============================================================================
 //  @brief  Polyfit()
 //          Fit a polynomial given x and y vectors.
 //
-//  @param  xvals:  x vector 
-//  @param  xvec:   Eigen vector for x vector 
-//  @param  yvec:   Eigen vector for y vector 
-//  @param  order:  order of polynomial  
+//  @param  x:      Eigen vector for x coord 
+//  @param  y:      Eigen vector for y coord 
+//  @param  order:  Order of polynomial  
 //  @param  result: Reference to Eigen vector for fitted result 
 //
 //  @return void
 //=============================================================================
-void MPC::Polyfit( const Eigen::VectorXd xvec, 
-                   const Eigen::VectorXd yvec, 
+void MPC::Polyfit( const Eigen::VectorXd x, 
+                   const Eigen::VectorXd y, 
                    const int order, 
                    Eigen::VectorXd& result ) 
 {
-  assert(xvec.size() == yvec.size());
-  assert(order >= 1 && order <= xvec.size() - 1);
+  assert( x.size() == y.size());
+  assert( order >= 1 && order <= x.size() - 1);
 
-  Eigen::MatrixXd A( xvec.size(), order + 1 );
+  Eigen::MatrixXd A( x.size(), order + 1 );
   int i,j;
 
-  for( i = 0; i < xvec.size(); i++ ) {
+  for( i = 0; i < x.size(); i++ ) {
     A(i, 0) = 1.0;
   }
 
-  for( j = 0; j < xvec.size(); j++ ) {
+  for( j = 0; j < x.size(); j++ ) {
     for( i = 0; i < order; i++ ) {
-      A( j, i + 1 ) = A( j,i ) * xvec( j );
+      A( j, i + 1 ) = A( j,i ) * x( j );
     }
   }
 
   auto Q = A.householderQr();
-  result = Q.solve( yvec );
+
+  result = Q.solve( y );
 }
 
 //=============================================================================
@@ -218,8 +182,7 @@ void MPC::Polyfit( const Eigen::VectorXd xvec,
 //
 //  @return result: evaluated result (cte) 
 //=============================================================================
-double MPC::Polyeval( const Eigen::VectorXd coeffs, 
-                      double x ) 
+double MPC::Polyeval( const Eigen::VectorXd coeffs, double x ) 
 {
 
   double result = 0.0;
@@ -241,8 +204,7 @@ double MPC::Polyeval( const Eigen::VectorXd coeffs,
 //
 //  @return result: vector to hold solve result
 //=============================================================================
-vector<double> MPC::Solve( const Eigen::VectorXd state, 
-                           const Eigen::VectorXd coeffs ) 
+vector<double> MPC::Solve( const Eigen::VectorXd state, const Eigen::VectorXd coeffs ) 
 {
 
   bool ok = true;
@@ -271,14 +233,6 @@ vector<double> MPC::Solve( const Eigen::VectorXd state,
     vars[i] = 0;
   }
 
-  // Set the initial sub-vector values 
-  vars[x_start] = x;
-  vars[y_start] = y;
-  vars[psi_start] = psi;
-  vars[v_start] = v;
-  vars[cte_start] = cte;
-  vars[epsi_start] = epsi;
-
   Dvector vars_lowerbound(n_vars);
   Dvector vars_upperbound(n_vars);
   //  Set lower and upper limits for variables.
@@ -293,7 +247,7 @@ vector<double> MPC::Solve( const Eigen::VectorXd state,
   // The upper and lower limits of delta are set to -25 and 25
   // degrees (values in radians).
 
-  double angle_radians = deg2rad( 25 );
+  double angle_radians = deg2rad( MPC_MAX_STEER );
   for( i = delta_start; i < a_start; i++ ) {
     vars_lowerbound[i] = -angle_radians;
     vars_upperbound[i] = angle_radians;
@@ -358,76 +312,88 @@ vector<double> MPC::Solve( const Eigen::VectorXd state,
   ok &= solution.status == CppAD::ipopt::solve_result<Dvector>::success;
 
   // Cost
-  auto cost = solution.obj_value;
-  std::cout << "Cost " << cost << std::endl;
+  //auto cost = solution.obj_value;
+  //std::cout << "Cost " << cost << std::endl;
 
   // Return the first actuator values. 
-  // The variables can be accessed with `solution.x[i]`.
+  
+  vector<double> result;
+  double steering_angle = solution.x[delta_start];
+  double throttle = solution.x[a_start];
 
-  x_vals.clear();
-  y_vals.clear();
-  for( i = 0; i < N; i++ ) {
-    x_vals.push_back( solution.x[x_start + i] );
-    y_vals.push_back( solution.x[y_start + i] );
+  result.push_back( steering_angle );
+  result.push_back( throttle );
+
+  for( i = 0; i < N - 2; i++ ) {
+    result.push_back( solution.x[x_start + i + 1] );
+    result.push_back( solution.x[y_start + i + 1] );
   }
-
-  return {solution.x[x_start + 1],   
-          solution.x[y_start + 1],
-          solution.x[psi_start + 1], 
-          solution.x[v_start + 1],
-          solution.x[cte_start + 1], 
-          solution.x[epsi_start + 1],
-          solution.x[delta_start]+ solution.x[delta_start+1],   
-          solution.x[a_start]+ solution.x[a_start+1] };
-
+  return result;
 }
 
 //=============================================================================
-//  @brief: GetMpcOuputs()
-//          An MPC class function wrapper for the following sub-functions:
+//  @brief: OptimizeMpc()
+//          An MPC class wrapper function:
 //          1. Convert Map coordinates to vehicle coordinates
 //          2. Run polyfit to fit a polynomial given x and y vectors.
 //          3. Run polyeval to evaluate the polynomial and compute the cte 
-//          4. Run solve to get predicted steering and throttle values 
+//          4. Run solve to get predicted vars[] 
 //
-//  @param  px:            const double x 
-//  @param  py:            const double y 
-//  @param  psi:           const double psi 
-//  @param  ptsx:          reference to ptsx vector 
-//  @param  ptsy:          reference to ptsy vector 
-//  @param  steer_value:   reference to steering value 
-//  @param  thottle_value: reference to thottle value 
+//  @param  px:       const double x 
+//  @param  py:       const double y 
+//  @param  psi:      const double psi 
+//  @param  v:        const double psi 
+//  @param  ptsx:     const reference to ptsx map coords 
+//  @param  ptsy:     const reference to ptsy map coords 
+//  @param  ptsx_car: reference to ptsx car coords 
+//  @param  ptsy_car: reference to ptsy car coords 
 //
 //  @return void
 //=============================================================================
-void MPC::GetMpcOutputs( const double px, 
-                         const double py, 
-                         const double psi, 
-                         const double v, 
-                         vector<double>& ptsx, 
-                         vector<double>& ptsy, 
-                         double& steer_value, 
-                         double& throttle_value ) 
+vector<double> MPC::OptimizeMpc( const double px, 
+                                 const double py, 
+                                 const double psi, 
+                                 const double v, 
+                                 const double delta, 
+                                 const double a, 
+                                 const vector<double>& ptsx, 
+                                 const vector<double>& ptsy, 
+                                 Eigen::VectorXd& ptsx_car, 
+                                 Eigen::VectorXd& ptsy_car )
 {
   Eigen::VectorXd coeffs;
+  Eigen::VectorXd state( 6 );
+  vector<double> vars; 
   
   // Convert Map to Vehicle coords
-  GetVehicleCoords( px, py, psi, ptsx, ptsy );
+  for( size_t i = 0; i < ptsx.size(); i++ ) {
+    auto dx = ( ptsx[i] - px );
+    auto dy = ( ptsy[i] - py );
 
-  Polyfit(  Eigen::VectorXd::Map( ptsx.data(), ptsx.size() ), 
-            Eigen::VectorXd::Map( ptsy.data(), ptsy.size() ), 
-            3,
-            coeffs );
+    ptsx_car[i] = ( ( dx * cos( -psi ) ) - ( dy * sin( -psi ) ) );
+    ptsy_car[i] = ( ( dx * sin( -psi ) ) + ( dy * cos( -psi ) ) );
+  }
 
-  double cte = Polyeval( coeffs, 0 );
-  
-  double epsi = -atan(coeffs[1]);
+  Polyfit( ptsx_car, ptsy_car, MPC_POLY_ORDER, coeffs );
 
-  Eigen::VectorXd state(6);
-  state << 0, 0, 0, v, cte, epsi;
-  
-  auto vars = Solve( state, coeffs );
+  // Initial State vector (no latency).
+  const double x0 = 0;
+  const double y0 = 0;
+  const double psi0 = 0;
+  const double v0 = v;
+  const double cte0 = coeffs[0];
+  const double epsi0 = -atan( coeffs[1] );
 
-  steer_value = vars[6];
-  throttle_value = vars[7];
+  // State vector (with 100ms latency).
+  auto pxd = x0 + ( v0 * cos( psi0 ) * MPC_LATENCY );
+  auto pyd = y0 + ( v0 * sin( psi0 ) * MPC_LATENCY );
+  auto psid = psi0 - ( v0 * delta * ( MPC_LATENCY/MPC_LF ) );
+  auto vd = v0 + ( a * MPC_LATENCY );
+  auto cted = cte0 + ( v0 * sin( epsi0 ) * MPC_LATENCY );
+  auto epsid = epsi0 - ( v0 * atan( coeffs[1] ) * ( MPC_LATENCY/MPC_LF ) );
+
+  state << pxd, pyd, psid, vd, cted, epsid;
+  vars = Solve( state, coeffs );
+
+  return vars;
 }
